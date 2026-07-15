@@ -1,0 +1,118 @@
+# CARE-Probe
+
+Code and cohort-build scripts for:
+
+> **CARE-Probe: Risk-Controlled Physician Deferral for On-Premise Medical LLMs**
+> Sung Jin Jang, Beakcheol Jang. Graduate School of Information, Yonsei University.
+> *Journal of Medical Systems* (under review, 2026).
+
+CARE-Probe is a deployable safety mechanism for governing LLM-based clinical decision
+support. It reads a model's internal state with a lightweight linear probe and wraps the
+resulting score in **Conformal Risk Control (CRC)**, bounding a committed-harm rate (an
+under-imaging discordance proxy) below a preset target with a finite-sample,
+distribution-free guarantee.
+
+---
+
+## ⚠️ Data availability and privacy
+
+This repository contains **code only**. It does **not** contain any patient data or
+derived patient-level artifacts.
+
+The study uses **MIMIC-IV** and **MIMIC-IV-ED**, which are available via
+[PhysioNet](https://physionet.org/) to credentialed users under the PhysioNet
+Credentialed Health Data Use Agreement. To reproduce the results you must obtain
+credentialed access and regenerate the cohort locally with the scripts here. Per the
+DUA, no MIMIC-derived data (cohort tables, hidden-state vectors, per-encounter
+predictions) is redistributed in this repository.
+
+`cohort_build/exam_name_mapping.csv` is a deterministic exam-name → (modality, body
+part) mapping vocabulary and contains no patient information.
+
+---
+
+## Repository layout
+
+```
+cohort_build/          all runnable code
+  _m12a..e_*.py        cohort construction (exam-name survey → mapping → imaging events → cohort → cross-validation)
+  add_anchor_year.py   chronology recovery (stay → subject → patient anchor_year_group)
+  imaging_runner_v2.py multi-source retrieval + LLM generation (single / msrc modes)
+  e0_probe_runner.py   MAIN internal-state probe extraction (per-source top-3 concat evidence)
+  e0_conflict_runner.py / e0_uncertainty_runner.py   surface-signal computation
+  e0_analyze.py / e0_probe_analyze.py                surface-signal & probe analysis
+  e0_crc.py            Conformal Risk Control (Hoeffding–Bentkus, fixed-sequence testing, Mondrian)
+  e0_aggregate.py      result aggregation
+  e0x_deployed_surface_runner.py / e0x_analyze.py    deployed-surface diagnostic (concat vs fused)
+  run_*.sh             experiment drivers (B-2/B-3/B-4, C-2/C-3, E0X)
+  paths.py             environment-dependent paths (dev / server)
+  requirements_server.txt   Python dependencies
+  SERVER_SETUP.md      GPU + Milvus setup notes
+```
+
+---
+
+## Reproduction pipeline
+
+Prerequisites: credentialed MIMIC-IV / MIMIC-IV-ED access, a GPU server, a running
+[Milvus](https://milvus.io/) instance with the three MedRAG collections
+(PubMed / Wikipedia / Guidelines) embedded with `gte-large-en-v1.5`, and the eight
+open-weight backbones downloaded locally.
+
+```bash
+pip install -r cohort_build/requirements_server.txt
+export MILVUS_TOKEN=<user:pass>      # Milvus auth injected at runtime (never hardcoded)
+
+# 1. Build cohort (regenerates from your local MIMIC copy)
+python cohort_build/_m12a_survey_exam_names.py
+python cohort_build/_m12b_build_mapping.py
+python cohort_build/_m12c_build_imaging_events_v2.py
+python cohort_build/_m12d_build_cohort_v2.py
+python cohort_build/add_anchor_year.py
+python cohort_build/_m12e_cross_validate.py        # reliability (Cohen's kappa)
+
+# 2. Surface signals + internal-state probe extraction (MAIN)
+CRMSR_ENV=server python cohort_build/e0_conflict_runner.py --gpu_id 6 --n 500 --seed 42
+CRMSR_ENV=server python cohort_build/e0_probe_runner.py \
+    --out_prefix runs_main/probe_qwen14b_n2000_seed42 \
+    --llm_model_path /path/to/Qwen/Qwen2.5-14B-Instruct \
+    --embed_model_path /path/to/Alibaba-NLP/gte-large-en-v1.5 \
+    --gpu_id 6 --n 2000 --seed 42
+
+# 3. Analysis, probe training, and CRC guarantee
+python cohort_build/e0_analyze.py
+python cohort_build/e0_probe_analyze.py
+python cohort_build/e0_crc.py --layer_idx 3 --probe_target loss   # deployed protocol
+
+# 4. Ablations (Supplementary)
+bash cohort_build/run_b2_phi4k_ablation.sh          # B-2: Phi-3-mini-4k confound
+bash cohort_build/run_b3_qwen_fulln.sh              # B-3: full-cohort scale-up
+bash cohort_build/run_b4_3seed.sh                   # B-4: no-retrieval ablation
+bash cohort_build/run_c2_baselines.sh               # C-2: head-to-head baselines
+bash cohort_build/run_c3_shift_sev_allbackbones.sh  # C-3: temporal shift + severity (8 backbones)
+bash cohort_build/run_e0x.sh                        # E0X: deployed-surface diagnostic
+```
+
+Reproducibility: greedy decoding (deterministic); probe layer fixed a priori at relative
+depth 0.875; subsample/split seeds {42, 43, 44} × {42…51}; α = δ = 0.10. See
+`SERVER_SETUP.md` for environment details.
+
+---
+
+## Citation
+
+```bibtex
+@article{jang2026careprobe,
+  title  = {CARE-Probe: Risk-Controlled Physician Deferral for On-Premise Medical LLMs},
+  author = {Jang, Sung Jin and Jang, Beakcheol},
+  journal= {Journal of Medical Systems},
+  year   = {2026},
+  note   = {Under review}
+}
+```
+
+## License
+
+Code is released under the MIT License (see [LICENSE](LICENSE)). MIMIC-IV / MIMIC-IV-ED
+data are governed separately by the PhysioNet Credentialed Health Data Use Agreement and
+are **not** redistributed here.
