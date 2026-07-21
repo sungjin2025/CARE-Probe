@@ -19,8 +19,8 @@ Guarantee (the defensible one we implement):
     s.t.  P( fraction of ALL patients that are auto-committed-AND-harmfully-wrong
     <= alpha )  >= 1 - delta.
     We ALSO report the *conditional* selective risk E[l | commit] empirically
-    (the [직접 확인 필요] item: rigorous bound is on the joint risk; conditional is
-    descriptive). [직접 확인 필요]: selective-CRC conditional-risk estimator vs joint.
+    (the [needs verification] item: rigorous bound is on the joint risk; conditional is
+    descriptive). [needs verification]: selective-CRC conditional-risk estimator vs joint.
 
 Loss l(x) in [0,1] (E0 lesson: tie deferral to HARM, not confidence):
     primary  ct_miss : 1 if a high-risk CT study is in gold but missed by the prediction.

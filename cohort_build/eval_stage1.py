@@ -1,33 +1,33 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""eval_stage1.py — CARE-Probe 추가실험 Stage1 통합 추출/집계.
+"""eval_stage1.py — CARE-Probe supplementary experiment Stage1 unified extraction/aggregation.
 
-MAIN 런(8백본×3시드, runs_main/)은 이미 완주·로그화됨. 이 스크립트는 *재실행 없이*
-기존 로그 + results_main.csv 에서 To-Do 수치를 한 번에 뽑는다.
+The MAIN runs (8 backbones × 3 seeds, runs_main/) are already completed and logged. This script pulls
+all the To-Do numbers at once from the existing logs + results_main.csv *without re-running*.
 
-산출:
-  A-1  E-sev (Fig6a)        : esev_qwen14b_seed*.log  파싱
-  A-2b 내부 probe AUC (Fig2): analyze_<bb>_seed*.log  파싱  (+ C-4 generic vs harm-specific)
-  C-1  Fig4 집계            : results_main.csv  백본별 mean±95%CI (gap%/joint_risk/commit/AURC)
-  C-3  gap% ↔ last AUC      : 백본별 산점 + Spearman/Pearson
-  C-5  E-shift (Fig6b)      : results_main.csv shift행 + crc_qwen14b_shift_seed*.log
+Outputs:
+  A-1  E-sev (Fig6a)        : parse esev_qwen14b_seed*.log
+  A-2b internal probe AUC (Fig2): parse analyze_<bb>_seed*.log  (+ C-4 generic vs harm-specific)
+  C-1  Fig4 aggregation     : results_main.csv  per-backbone mean±95%CI (gap%/joint_risk/commit/AURC)
+  C-3  gap% ↔ last AUC      : per-backbone scatter + Spearman/Pearson
+  C-5  E-shift (Fig6b)      : results_main.csv shift rows + crc_qwen14b_shift_seed*.log
 
-별도 1회 실행이 필요한 항목(데이터는 로컬에 있음):
-  A-2a 표층 AUC : python e0_analyze.py --pred_csv runs_e0/e0_preds_n500_seed42.csv \
+Items requiring a separate one-time run (data is available locally):
+  A-2a surface AUC : python e0_analyze.py --pred_csv runs_e0/e0_preds_n500_seed42.csv \
                         --u_csv runs_e0/e0_unc_n500_seed42.csv --u_col U_sc --window full
-  B-1  Fig3 곡선: python e0_crc.py --npz runs_main/probe_mediphi_n2000_seed42.npz --window full \
+  B-1  Fig3 curve : python e0_crc.py --npz runs_main/probe_mediphi_n2000_seed42.npz --window full \
                         --loss ct_miss --probe_target loss --layer_idx 3 --alpha 0.10 --delta 0.10 \
                         --seed 42 --out_csv runs_main/rc_mediphi_seed42.csv
-  (--run_b1 플래그를 주면 B-1을 이 스크립트가 직접 호출한다.)
+  (Passing the --run_b1 flag makes this script call B-1 directly.)
 
-사용:  python eval_stage1.py            # 추출/집계만
-       python eval_stage1.py --run_b1  # + B-1 rc곡선 재실행
-재현성: 파싱은 결정적. 집계 시드 고정 불필요.
+Usage:  python eval_stage1.py            # extraction/aggregation only
+        python eval_stage1.py --run_b1  # + re-run B-1 rc curve
+Reproducibility: parsing is deterministic. No seed fixing needed for aggregation.
 """
 import os, re, glob, csv, math, subprocess, argparse, sys
 from collections import defaultdict
 
-try:  # Windows 콘솔(cp949)에서도 UTF-8 출력
+try:  # UTF-8 output even on the Windows console (cp949)
     sys.stdout.reconfigure(encoding="utf-8")
 except Exception:
     pass
@@ -35,14 +35,14 @@ except Exception:
 RM = "runs_main"
 LOGS = os.path.join(RM, "logs")
 
-# 백본 분류 (일반 vs 의료 FT). mediphi=phi-3 의료FT, med42=llama 의료FT, openbio=의료FT.
+# Backbone classification (general vs medical FT). mediphi=phi-3 medical-FT, med42=llama medical-FT, openbio=medical-FT.
 MEDICAL = {"mediphi", "med42-8b", "openbio-8b"}
 GENERAL = {"qwen14b", "llama31-8b", "mistral7b-v03", "gemma2-9b", "phi3mini-128k"}
 ALL_BB = sorted(GENERAL | MEDICAL)
 
 
 def mean_ci(xs):
-    """평균과 95% CI 반폭 (정규근사). n<2면 CI=0."""
+    """Mean and 95% CI half-width (normal approximation). CI=0 if n<2."""
     n = len(xs)
     if n == 0:
         return float("nan"), float("nan")
@@ -71,7 +71,7 @@ def parse_esev():
     print(f"A-1  E-sev (severity-adaptive CRC)  — {len(files)} seed logs (Fig6a)")
     print("=" * 66)
     if not rows:
-        print("  [경고] esev 로그/패턴 미발견:", os.path.join(LOGS, "esev_qwen14b_seed*.log"))
+        print("  [WARNING] esev log/pattern not found:", os.path.join(LOGS, "esev_qwen14b_seed*.log"))
         return
     print(f"  {'group':12s} {'alpha':>6} {'commit':>8} {'joint_risk':>14} {'committed_harm':>15} {'OK_seeds':>9}")
     harms = {}; harm_seeds = {}
@@ -88,19 +88,19 @@ def parse_esev():
         print(f"  {g:12s} {a:>6.2f} {cm:>8.3f} {jm:>8.4f}±{jh:.4f} {hm:>9.4f}±{hh:.4f} "
               f"{n_ok:>5d}/{len(v)}")
     if {"high(ESI1-2)", "lower(ESI3-5)"} <= harms.keys():
-        verdict = "성립" if harms["high(ESI1-2)"] < harms["lower(ESI3-5)"] else "불성립"
-        print(f"  -> 평균 고위험 강보호: high {harms['high(ESI1-2)']:.4f} < lower {harms['lower(ESI3-5)']:.4f} → {verdict}")
-        # 시드별 committed_harm 역전 점검 (소표본 변동 정직 보고)
+        verdict = "holds" if harms["high(ESI1-2)"] < harms["lower(ESI3-5)"] else "does not hold"
+        print(f"  -> mean strong protection of high-risk group: high {harms['high(ESI1-2)']:.4f} < lower {harms['lower(ESI3-5)']:.4f} → {verdict}")
+        # Per-seed committed_harm reversal check (honest reporting of small-sample variation)
         inv = [i for i, (h, l) in enumerate(zip(harm_seeds['high(ESI1-2)'], harm_seeds['lower(ESI3-5)'])) if h >= l]
         if inv:
-            print(f"     [직접 확인 필요] 시드 {inv} 에서 high>=lower 역전 (high-acuity n_te≈240 소표본 변동).")
-        print(f"     보장: high그룹은 delta=0.10 하에 시드별 OK_seeds 참조(소표본→간헐적 위반 가능).")
+            print(f"     [needs direct verification] seeds {inv} show high>=lower reversal (high-acuity n_te≈240 small-sample variation).")
+        print(f"     guarantee: for the high group under delta=0.10, refer to per-seed OK_seeds (small sample → intermittent violations possible).")
 
 
 # ─────────────────── A-2b / C-4  probe AUC ───────────────────
 def parse_probe_auc():
-    """analyze_<bb>_seed*.log 에서 best AUC (exact_mismatch/under_imaging/ct_miss)
-    + deployed last-token ct_miss AUC(=last 행 최대; C-3 산점용)."""
+    """Best AUC (exact_mismatch/under_imaging/ct_miss) from analyze_<bb>_seed*.log
+    + deployed last-token ct_miss AUC (= max of the last row; for the C-3 scatter)."""
     best_re = re.compile(r"-> best (\w+): AUC=([\d.]+) @ \('(\w+)', (\w+)\)")
     grid_re = re.compile(r"L\d+=([\d.]+)")
     per_bb = defaultdict(lambda: defaultdict(list))  # bb -> err -> [best auc...]
@@ -124,7 +124,7 @@ def parse_probe_auc():
                     per_bb[bb][err].append(float(auc))
                     pos_bb[bb][err].append(pos)
     print("\n" + "=" * 66)
-    print("A-2b  내부 probe AUC (best, mean±CI over seeds)  — Fig2 / C-4")
+    print("A-2b  internal probe AUC (best, mean±CI over seeds)  — Fig2 / C-4")
     print("=" * 66)
     print(f"  {'backbone':16s} {'class':4s} {'exact_mismatch':>16} {'ct_miss':>14} {'under_img':>14}")
     table = {}
@@ -141,12 +141,12 @@ def parse_probe_auc():
     ems = [v["exact_mismatch"] for v in table.values() if not math.isnan(v["exact_mismatch"])]
     cts = [v["ct_miss"] for v in table.values() if not math.isnan(v["ct_miss"])]
     if ems and cts:
-        print(f"  -> generic(exact_mismatch) 범위 {min(ems):.2f}–{max(ems):.2f} (보편) | "
-              f"harm-specific(ct_miss) 범위 {min(cts):.2f}–{max(cts):.2f} (분산)  [C-4 근거]")
+        print(f"  -> generic(exact_mismatch) range {min(ems):.2f}–{max(ems):.2f} (universal) | "
+              f"harm-specific(ct_miss) range {min(cts):.2f}–{max(cts):.2f} (dispersed)  [C-4 evidence]")
     return table
 
 
-# ─────────────────── C-1  results_main 집계 ───────────────────
+# ─────────────────── C-1  results_main aggregation ───────────────────
 def load_results():
     rows = []
     with open(os.path.join(RM, "results_main.csv"), newline="", encoding="utf-8") as f:
@@ -156,7 +156,7 @@ def load_results():
 
 
 def aggregate_main(rows):
-    """백본별 (main split) mean±95%CI: commit, joint_risk, aurc_probe, gap_closed(gap%)."""
+    """Per-backbone (main split) mean±95%CI: commit, joint_risk, aurc_probe, gap_closed (gap%)."""
     by_bb = defaultdict(lambda: defaultdict(list))
     for r in rows:
         tag = r["tag"]
@@ -169,7 +169,7 @@ def aggregate_main(rows):
             except (KeyError, ValueError):
                 pass
     print("\n" + "=" * 66)
-    print("C-1  results_main 집계 (8백본 main split, mean±95%CI)  — Fig4")
+    print("C-1  results_main aggregation (8 backbones main split, mean±95%CI)  — Fig4")
     print("=" * 66)
     print(f"  {'backbone':16s} {'cls':3s} {'commit':>13} {'joint_risk':>15} {'gap%':>14} {'AURC_probe':>13}")
     summ = {}
@@ -185,17 +185,17 @@ def aggregate_main(rows):
         print(f"  {bb:16s} {cls:3s} {cm[0]:>7.3f}±{cm[1]:.3f} {jm[0]:>9.4f}±{jm[1]:.4f} "
               f"{gm[0]:>8.1f}±{gm[1]:.1f} {am[0]:>8.4f}±{am[1]:.4f}")
     n_ok = sum(1 for v in summ.values() if v["ok"])
-    # 런 단위 성공률 (모든 main 런)
+    # Run-level success rate (all main runs)
     all_j = [j for bb in by_bb for j in by_bb[bb]["joint_risk"]]
     run_ok = sum(1 for j in all_j if j <= 0.10 + 1e-9)
-    print(f"  -> 평균 joint_risk <= alpha(0.10) 성립 백본: {n_ok}/{len(summ)}  [Fig4 'α선 왼쪽']")
-    print(f"  -> 런 단위 성공률: {run_ok}/{len(all_j)} = {100*run_ok/len(all_j):.1f}%  "
-          f"(개별 런은 소표본 변동으로 일부 초과 가능)")
-    # 일반 vs 의료 FT 평균 gap%
+    print(f"  -> backbones with mean joint_risk <= alpha(0.10): {n_ok}/{len(summ)}  [Fig4 'left of the α line']")
+    print(f"  -> run-level success rate: {run_ok}/{len(all_j)} = {100*run_ok/len(all_j):.1f}%  "
+          f"(individual runs may exceed due to small-sample variation)")
+    # General vs medical FT mean gap%
     for cls, bbs in (("general", GENERAL), ("medical", MEDICAL)):
         gv = [summ[b]["gap%"] for b in bbs if b in summ]
         if gv:
-            print(f"     {cls:8s} 평균 gap% = {sum(gv)/len(gv):.1f}  (n={len(gv)})")
+            print(f"     {cls:8s} mean gap% = {sum(gv)/len(gv):.1f}  (n={len(gv)})")
     return summ
 
 
@@ -206,7 +206,7 @@ def correlate(summ, auc_table):
         if bb in summ and bb in auc_table and not math.isnan(auc_table[bb]["last_ct"]):
             pts.append((bb, auc_table[bb]["last_ct"], summ[bb]["gap%"]))
     print("\n" + "=" * 66)
-    print("C-3  gap% ↔ deployed last-token ct_miss AUC  (산점 8점 + 상관)")
+    print("C-3  gap% ↔ deployed last-token ct_miss AUC  (8-point scatter + correlation)")
     print("=" * 66)
     print(f"  {'backbone':16s} {'last_ct_miss_AUC':>18} {'gap%':>8}")
     for bb, a, g in sorted(pts, key=lambda p: p[1]):
@@ -214,7 +214,7 @@ def correlate(summ, auc_table):
     if len(pts) >= 3:
         xs = [p[1] for p in pts]; ys = [p[2] for p in pts]
         print(f"  Pearson r  = {pearson(xs, ys):+.3f}")
-        print(f"  Spearman ρ = {spearman(xs, ys):+.3f}   (양의 단조관계 = 메커니즘 검증)")
+        print(f"  Spearman ρ = {spearman(xs, ys):+.3f}   (positive monotonic relationship = mechanism validation)")
 
 
 def pearson(x, y):
@@ -253,7 +253,7 @@ def parse_shift(rows):
     print("C-5  E-shift (temporal split, qwen14b)  — Fig6b")
     print("=" * 66)
     if not by:
-        print("  [경고] shift 행 미발견")
+        print("  [WARNING] shift rows not found")
         return
     for k in ("commit", "joint_risk", "gap_closed"):
         m, h = mean_ci(by[k])
@@ -261,19 +261,19 @@ def parse_shift(rows):
         val = m*100 if k == "gap_closed" else m
         print(f"  {k:12s} = {val:.4f}{unit} ± {(h*100 if k=='gap_closed' else h):.4f}")
     allok = all(j <= 0.10 + 1e-9 for j in by["joint_risk"])
-    print(f"  -> temporal shift 하에서도 joint_risk<=alpha 보장: {'성립' if allok else '불성립'}")
+    print(f"  -> joint_risk<=alpha guarantee even under temporal shift: {'holds' if allok else 'does not hold'}")
 
 
-# ─────────────────── A-2a  표층 AUC (옵션 재실행) ───────────────────
+# ─────────────────── A-2a  surface AUC (optional re-run) ───────────────────
 def run_a2a():
-    """e0_analyze.py를 호출해 표층 단일신호 AUC(A0) + self-consistency Spearman 추출."""
+    """Call e0_analyze.py to extract surface single-signal AUC (A0) + self-consistency Spearman."""
     pred = os.path.join("runs_e0", "e0_preds_n500_seed42.csv")
     unc = os.path.join("runs_e0", "e0_unc_n500_seed42.csv")
     print("\n" + "=" * 66)
-    print("A-2a  표층 단일신호 AUC (e0_analyze A0 블록)  — Fig2")
+    print("A-2a  surface single-signal AUC (e0_analyze A0 block)  — Fig2")
     print("=" * 66)
     if not os.path.exists(pred):
-        print(f"  [경고] pred_csv 없음: {pred}"); return
+        print(f"  [WARNING] pred_csv not found: {pred}"); return
     cmd = ["python", "e0_analyze.py", "--pred_csv", pred, "--window", "full"]
     if os.path.exists(unc):
         cmd += ["--u_csv", unc, "--u_col", "U_sc"]
@@ -288,30 +288,30 @@ def run_a2a():
             break
         elif grab and line.strip():
             print("  " + line.strip())
-    print("  -> 표층(S_max·U_sc·conflict) 모두 ≈0.50 = chance (oracle card만 높음).")
+    print("  -> surface signals (S_max·U_sc·conflict) all ≈0.50 = chance (only oracle card is high).")
 
 
-# ─────────────────── B-1  rc 곡선 (옵션 재실행) ───────────────────
+# ─────────────────── B-1  rc curve (optional re-run) ───────────────────
 def run_b1():
     npz = os.path.join(RM, "probe_mediphi_n2000_seed42.npz")
     out = os.path.join(RM, "rc_mediphi_seed42.csv")
     if not os.path.exists(npz):
-        print(f"\n[B-1] npz 없음: {npz}"); return
+        print(f"\n[B-1] npz not found: {npz}"); return
     cmd = ["python", "e0_crc.py", "--npz", npz, "--window", "full", "--loss", "ct_miss",
            "--probe_target", "loss", "--layer_idx", "3", "--alpha", "0.10", "--delta", "0.10",
            "--seed", "42", "--out_csv", out]
-    print("\n" + "=" * 66); print("B-1  Fig3 risk-coverage 곡선 재실행"); print("=" * 66)
+    print("\n" + "=" * 66); print("B-1  re-run Fig3 risk-coverage curve"); print("=" * 66)
     print("  $ " + " ".join(cmd))
     subprocess.run(cmd, check=False)
     if os.path.exists(out):
-        print(f"  -> 저장됨: {out}")
+        print(f"  -> saved: {out}")
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--run_a2a", action="store_true", help="A-2a 표층 AUC 계산(e0_analyze 호출)")
-    ap.add_argument("--run_b1", action="store_true", help="B-1 rc곡선 CRC 재실행")
-    ap.add_argument("--all", action="store_true", help="추출 + A-2a + B-1 모두 실행")
+    ap.add_argument("--run_a2a", action="store_true", help="compute A-2a surface AUC (call e0_analyze)")
+    ap.add_argument("--run_b1", action="store_true", help="re-run B-1 rc-curve CRC")
+    ap.add_argument("--all", action="store_true", help="run extraction + A-2a + B-1 all")
     args = ap.parse_args()
     parse_esev()
     if args.run_a2a or args.all:
@@ -324,4 +324,4 @@ if __name__ == "__main__":
     if args.run_b1 or args.all:
         run_b1()
     if not (args.run_a2a or args.all):
-        print("\n[참고] A-2a 표층 AUC는 --run_a2a 또는 --all 로 함께 실행.")
+        print("\n[note] A-2a surface AUC runs together with --run_a2a or --all.")

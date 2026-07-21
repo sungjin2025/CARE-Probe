@@ -293,7 +293,7 @@ def main():
         print("     → ② headline stands (clinical framing); proceed to Stage A.")
     elif sig_ok:
         print("  ⚠ PARTIAL — conflict relates to error but adds little beyond S+U (ΔAUC small).")
-        print("     → Headline to uncertainty (가), conflict=secondary; OR scale to full n / refine D.")
+        print("     → Headline to uncertainty (option a), conflict=secondary; OR scale to full n / refine D.")
     else:
         print("  ❌ WEAK — conflict not a reliable independent error signal at n=500.")
         print("     → Lean ③ benchmark / ④ analysis; revisit D definition, top_k, or scale n.")

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-last-token CT-miss probe AUC를 npz에서 단일 정의로 재계산해 정합성 확정.
-단일 정의: position='last', layer=idx3(상대깊이 0.875, 배포 레이어), target=ct_miss,
-          StandardScaler->PCA(50)->Logistic, 5-fold StratifiedKFold CV (seed=42), 3 sub-seed 평균.
-부수: prompt@idx3, grid-best(pos×layer) 도 같이 내어 어느 정본 계열이 무엇인지 식별.
-실행: python _recompute_lasttoken_auc.py [model1 model2 ...]
+Recompute the last-token CT-miss probe AUC from npz under a single definition to confirm consistency.
+Single definition: position='last', layer=idx3(relative depth 0.875, deployed layer), target=ct_miss,
+          StandardScaler->PCA(50)->Logistic, 5-fold StratifiedKFold CV (seed=42), averaged over 3 sub-seeds.
+Side outputs: prompt@idx3 and grid-best(pos x layer) too, to identify which canonical family is which.
+Run: python _recompute_lasttoken_auc.py [model1 model2 ...]
 """
 import sys, csv, statistics as st, math
 import numpy as np
@@ -19,7 +19,7 @@ from sklearn.metrics import roc_auc_score
 HERE = Path(__file__).resolve().parent
 RUNS = HERE / "runs_main"
 COHORT = HERE / "cohort_v2.csv"
-DEPLOY_POS_IDX = 3   # idx3 = 상대깊이 0.875
+DEPLOY_POS_IDX = 3   # idx3 = relative depth 0.875
 SEEDS = [42, 43, 44]
 GAP = {"gemma2-9b":67.7,"llama31-8b":61.1,"med42-8b":68.1,"mediphi":76.5,
        "mistral7b-v03":54.0,"openbio-8b":45.4,"phi3mini-128k":2.7,"qwen14b":40.2}
@@ -35,7 +35,7 @@ def probe_auc(X, y, n_pca=50, seed=42):
     proba = cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1]
     return float(roc_auc_score(y, proba))
 
-# cohort gold (full window) 로드
+# load cohort gold (full window)
 def load_gold():
     import pandas as pd
     df = pd.read_csv(COHORT, low_memory=False)
@@ -64,7 +64,7 @@ def run_model(m):
     for sd in SEEDS:
         f = RUNS / f"probe_{m}_n2000_seed{sd}.npz"
         if not f.exists():
-            print(f"  [skip] {f.name} 없음"); continue
+            print(f"  [skip] {f.name} missing"); continue
         d = np.load(f, allow_pickle=True)
         keep, y = ctmiss_labels(d["stay_ids"], d["valid"], d["pred_bits"], d["labels"])
         base = y.mean()
@@ -94,7 +94,7 @@ if __name__ == "__main__":
         (lm,lh),(pm,ph),(gm,gh),base = run_model(m)
         print(f"{m:16s} {lm:.3f}±{lh:.3f}   {pm:.3f}±{ph:.3f}   {gm:.3f}±{gh:.3f}   {base:.3f}  {GAP[m]:5.1f}")
         rows.append((m, lm, lh, pm, gm, base, GAP[m]))
-    # 상관 (last@idx3 mean vs gap%)
+    # correlation (last@idx3 mean vs gap%)
     if len(rows) >= 3:
         import numpy as np
         L=np.array([r[1] for r in rows]); G=np.array([r[6] for r in rows])

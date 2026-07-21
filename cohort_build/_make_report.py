@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-CARE-Probe 전체 실험결과 종합 리포트 생성기.
-단일 'blocks' 모델에서 HTML + Word(.docx)를 동시에 렌더링한다(내용 불일치 방지).
-실행: python _make_report.py
-출력: CARE-Probe_실험결과_종합.html / .docx
+CARE-Probe comprehensive experiment-results report generator.
+Renders HTML + Word (.docx) simultaneously from a single 'blocks' model (to prevent content mismatch).
+Run: python _make_report.py
+Output: CARE-Probe_experiment_results_summary.html / .docx
 """
 import html as _html
 from pathlib import Path
@@ -16,10 +16,10 @@ from docx.oxml import OxmlElement
 HERE = Path(__file__).resolve().parent
 STAMP = "2026-06-13"
 
-# ---------------------------------------------------------------- 리포트 모델
-# 블록 타입: ('h1'|'h2'|'h3', text) / ('p', text) / ('callout', text)
+# ---------------------------------------------------------------- report model
+# Block types: ('h1'|'h2'|'h3', text) / ('p', text) / ('callout', text)
 #           ('ul', [items]) / ('table', headers, rows, caption)
-# 인라인 강조: **bold**
+# Inline emphasis: **bold**
 B = []
 def h1(t): B.append(("h1", t))
 def h2(t): B.append(("h2", t))
@@ -29,98 +29,98 @@ def callout(t): B.append(("callout", t))
 def ul(items): B.append(("ul", items))
 def table(headers, rows, caption=""): B.append(("table", headers, rows, caption))
 
-# ============================================================ 내용 시작
-h1("CARE-Probe — 전체 실험 결과 종합 정리")
-p(f"대상 디렉터리: cohort_build · 정리일: {STAMP} · "
-  "목표 학회/저널: AIIM (Artificial Intelligence in Medicine)")
-callout("**한 줄 요약** — 응급실(ED) 영상검사 오더 예측 과제에서, LLM **내부 표상 프로브**로 "
-        "'commit(자동 확정) vs defer(전문가 이관)'를 결정하고 **Conformal Risk Control(CRC)** 로 "
-        "joint-risk ≤ α 안전보장을 건다. 핵심 결과: **보장은 8개 백본·full-cohort·시간이동·중증도적응 전 조건에서 성립**하고, "
-        "유용성(gap_closed)은 **내부 신호가 디코드되는 백본에서만** 발생한다. B-2/B-3 추가실험까지 모두 완료.")
+# ============================================================ content start
+h1("CARE-Probe — Comprehensive Summary of All Experiment Results")
+p(f"Target directory: cohort_build · Compiled: {STAMP} · "
+  "Target venue/journal: AIIM (Artificial Intelligence in Medicine)")
+callout("**One-line summary** — On the emergency-department (ED) imaging-order prediction task, an LLM **internal-representation probe** "
+        "decides 'commit (auto-confirm) vs defer (hand off to expert)', and **Conformal Risk Control (CRC)** "
+        "enforces a joint-risk ≤ α safety guarantee. Key result: **the guarantee holds across all conditions — 8 backbones, full-cohort, temporal shift, severity adaptation**, "
+        "while utility (gap_closed) arises **only in backbones where the internal signal is decodable**. B-2/B-3 supplementary experiments are all complete.")
 
-# ---------------------------------------------------------------- 0. 실험 인벤토리
-h2("0. 실험 인벤토리 (전체 4세트, 모두 완료)")
+# ---------------------------------------------------------------- 0. experiment inventory
+h2("0. Experiment Inventory (4 sets total, all complete)")
 table(
-    ["실험", "목적", "백본 / 스케일", "시드 설계", "상태"],
+    ["Experiment", "Purpose", "Backbone / Scale", "Seed design", "Status"],
     [
-        ["e0 / MAIN", "CARE-Probe 핵심: probe AUC + CRC 보장/유용성", "8개 백본, N=2,000", "추출 42–44 × split 42–51", "✅ 완료"],
-        ["m15 (CR-MSR)", "과제 베이스라인: 검색증강 생성(RAG) 영상오더 예측", "Qwen2.5-14B, N=1,000", "42, 43, 44", "✅ 완료"],
-        ["B-2", "4k Phi ablation — last-token 붕괴의 LongRoPE 교란 분리", "Phi-3-mini-4k, N=2,000", "추출 42–44 × split 42–51", "✅ 완료"],
-        ["B-3", "Full-cohort 헤드라인 — 스케일업 시 보장 유지 확인", "Qwen2.5-14B, N=7,814(full)", "추출 42 × split 42–51", "✅ 완료"],
+        ["e0 / MAIN", "CARE-Probe core: probe AUC + CRC guarantee/utility", "8 backbones, N=2,000", "extraction 42–44 × split 42–51", "✅ Done"],
+        ["m15 (CR-MSR)", "Task baseline: retrieval-augmented generation (RAG) imaging-order prediction", "Qwen2.5-14B, N=1,000", "42, 43, 44", "✅ Done"],
+        ["B-2", "4k Phi ablation — isolating LongRoPE confound in last-token collapse", "Phi-3-mini-4k, N=2,000", "extraction 42–44 × split 42–51", "✅ Done"],
+        ["B-3", "Full-cohort headline — confirming the guarantee holds when scaling up", "Qwen2.5-14B, N=7,814(full)", "extraction 42 × split 42–51", "✅ Done"],
     ],
-    "표 0. 실험 세트 요약")
+    "Table 0. Experiment set summary")
 ul([
-    "**평가지표 정의** — commit_rate: 자동 확정 비율 / joint_risk: 확정한 건들의 위험사건(ct_miss 등) 결합 위험 / "
-    "cond_risk: 확정건 조건부 위험 / AURC: Area Under Risk-Coverage (낮을수록 좋음) / "
-    "gap_closed: (naive−probe)/(naive−oracle), 무작위→오라클 격차를 프로브가 닫은 비율.",
-    "**손실/보장 설정** — loss = ct_miss(CT 누락), α = 0.10, δ = 0.10, layer_idx = 3(a-priori 고정), "
-    "프로브 = last-token, PCA ≤ 50, split = random(기본)·temporal(E-shift)·severity(E-sev).",
+    "**Metric definitions** — commit_rate: fraction auto-confirmed / joint_risk: combined risk of adverse events (ct_miss, etc.) over committed cases / "
+    "cond_risk: conditional risk of committed cases / AURC: Area Under Risk-Coverage (lower is better) / "
+    "gap_closed: (naive−probe)/(naive−oracle), the fraction of the random→oracle gap that the probe closes.",
+    "**Loss/guarantee settings** — loss = ct_miss (CT omission), α = 0.10, δ = 0.10, layer_idx = 3 (fixed a-priori), "
+    "probe = last-token, PCA ≤ 50, split = random (default)·temporal (E-shift)·severity (E-sev).",
 ])
 
-# ---------------------------------------------------------------- 1. 코호트
-h2("1. 코호트 구축 및 교차검증 (cohort_v2)")
-p("MIMIC-IV ED 기반. 마스터 stay 7,823건, 전건 edstay 매칭. 주호소(chief-complaint) 6개 코호트로 층화.")
+# ---------------------------------------------------------------- 1. cohort
+h2("1. Cohort Construction and Cross-Validation (cohort_v2)")
+p("Based on MIMIC-IV ED. Master of 7,823 stays, all matched to edstay. Stratified into 6 cohorts by chief complaint.")
 table(
-    ["코호트(주호소)", "stay 수"],
+    ["Cohort (chief complaint)", "# stays"],
     [["other", "4,717"], ["abdominal_pain", "2,166"], ["head_injury_dizzy", "610"],
-     ["chest_pain", "178"], ["flank_pain", "84"], ["sob", "68"], ["합계", "7,823"]],
-    "표 1a. 주호소별 코호트 분포")
+     ["chest_pain", "178"], ["flank_pain", "84"], ["sob", "68"], ["Total", "7,823"]],
+    "Table 1a. Cohort distribution by chief complaint")
 table(
-    ["영상검사 개수(card_full)", "0", "1", "2", "3", "4", "5", "6", "7"],
-    [["stay 수", "2,303", "3,392", "1,480", "417", "149", "63", "18", "1"]],
-    "표 1b. stay당 영상검사 카디널리티 분포 (card=0 = 무영상 2,303건)")
-p("**legacy 라벨과 교차검증** (cohort_v2의 멀티모달 라벨링 타당성 확인):")
+    ["# imaging studies (card_full)", "0", "1", "2", "3", "4", "5", "6", "7"],
+    [["# stays", "2,303", "3,392", "1,480", "417", "149", "63", "18", "1"]],
+    "Table 1b. Imaging-study cardinality distribution per stay (card=0 = no imaging, 2,303 cases)")
+p("**Cross-validation against legacy labels** (validating cohort_v2's multimodal labeling):")
 table(
-    ["검증 항목", "Agreement", "Cohen's κ"],
+    ["Validation item", "Agreement", "Cohen's κ"],
     [["7-class (FULL window)", "77.00%", "0.716"],
      ["7-class (EARLY 2h window)", "86.63%", "0.764"],
      ["4-class (gold4 scope, FULL)", "86.13%", "0.775"],
-     ["멀티모달 복원율 (legacy multi→v2 multi)", "97.3% (1,567/1,610)", "—"]],
-    "표 1c. cohort_v2 vs legacy 일치도")
-callout("코호트 타당성 — 4-class κ=0.775(상당한 일치), 무영상(none) 라벨 100% 일치. v2는 legacy가 단일로 "
-        "뭉갰던 **멀티모달 561건을 추가 복원**(주로 other/ct_abd) → 멀티모달 셋-라벨 과제로서 더 정밀.")
+     ["Multimodal recovery rate (legacy multi→v2 multi)", "97.3% (1,567/1,610)", "—"]],
+    "Table 1c. cohort_v2 vs legacy agreement")
+callout("Cohort validity — 4-class κ=0.775 (substantial agreement), no-imaging (none) label 100% match. v2 **additionally recovers 561 multimodal cases** "
+        "that legacy had collapsed into a single label (mostly other/ct_abd) → more precise as a multimodal set-labeling task.")
 
-# ---------------------------------------------------------------- 2. 베이스라인
-h2("2. 과제 베이스라인 — m15 검색증강 생성 (Qwen-14B, N=1,000)")
-p("프로브/CRC가 얹히는 토대인 '소박한 생성(naive generate)'의 과제 난이도. "
-  "**3시드(42·43·44) 평균±95%CI** (t분포, df=2; 시드당 ~7,100s):")
+# ---------------------------------------------------------------- 2. baseline
+h2("2. Task Baseline — m15 Retrieval-Augmented Generation (Qwen-14B, N=1,000)")
+p("Task difficulty of the 'naive generate' foundation on which the probe/CRC is layered. "
+  "**Mean±95%CI over 3 seeds (42·43·44)** (t-distribution, df=2; ~7,100s per seed):")
 table(
-    ["지표", "평균 ± 95%CI", "시드별 원값"],
+    ["Metric", "Mean ± 95%CI", "Per-seed raw values"],
     [["Commit rate / Abstain", "0.995±0.006 / 0.005±0.006", "0.998·0.993·0.995"],
      ["Micro P / R / F1", "0.482±0.034 / 0.362±0.016 / 0.414±0.021", "F1: 0.411·0.423·0.407"],
      ["Macro P / R / F1", "0.264±0.085 / 0.202±0.043 / 0.203±0.047", "F1: 0.186·0.199·0.223"],
      ["Mean Jaccard / Exact set match", "0.385±0.039 / 0.311±0.037", "J: 0.376·0.403·0.375"],
      ["Over-imaging / Under-imaging", "18.2±2.5% / 16.8±4.8%", "U: 18.8·15.0·16.5"],
      ["CT over-imaging / CT recall", "10.6±2.3% / 0.554±0.081", "R: 0.583·0.561·0.519"]],
-    "표 2. vanilla RAG 영상오더 예측 성능 (3시드 평균±95%CI, N=1,000)")
-callout("베이스라인 함의 — 소박한 생성은 Micro-F1 **0.414±0.021**, under-imaging **16.8±4.8%**로 "
-        "**그대로 자동확정하기엔 위험**. → CARE-Probe의 selective prediction(commit/defer + 안전보장) 동기를 정량적으로 뒷받침.")
+    "Table 2. Vanilla RAG imaging-order prediction performance (mean±95%CI over 3 seeds, N=1,000)")
+callout("Baseline implication — naive generation yields Micro-F1 **0.414±0.021** and under-imaging **16.8±4.8%**, "
+        "**too risky to auto-confirm as-is**. → Quantitatively motivates CARE-Probe's selective prediction (commit/defer + safety guarantee).")
 
 # ---------------------------------------------------------------- 3. MAIN
-h2("3. CARE-Probe 핵심 결과 (e0 / MAIN, Stage-1 분석)")
+h2("3. CARE-Probe Core Results (e0 / MAIN, Stage-1 analysis)")
 
-h3("3.1 CRC 코어 동작 — E-guar(보장) · E-win(유용성)  [대표: mediphi seed42, N=1,985]")
+h3("3.1 CRC Core Behavior — E-guar (guarantee) · E-win (utility)  [representative: mediphi seed42, N=1,985]")
 table(
-    ["블록", "지표", "값", "판정"],
+    ["Block", "Metric", "Value", "Verdict"],
     [["E-guar", "λ̂ / calib joint-risk", "0.173 / 0.0773", "—"],
      ["E-guar (TEST)", "commit / joint_risk / cond_risk", "0.721 / 0.0721 / 0.100", "≤ α=0.10 ✅"],
      ["E-win", "AURC: probe / naive / oracle", "0.0821 / 0.1700 / 0.0636", "—"],
-     ["E-win", "무작위→오라클 격차 닫음", "82.6%", "유의미 ✅"]],
-    "표 3.1 단일 백본 CRC 보장·유용성")
+     ["E-win", "random→oracle gap closed", "82.6%", "significant ✅"]],
+    "Table 3.1 Single-backbone CRC guarantee·utility")
 
-h3("3.2 표층 단일신호 AUC — 모두 우연 수준  [Fig2]")
-p("S_max(최대확률)·U_sc(불확실성)·conflict 표층 신호의 ct_miss/exact_mismatch/under_imaging 판별 AUC는 "
-  "전부 **≈0.50(chance)**. 난이도(oracle card)와의 상관도 거의 0:")
+h3("3.2 Surface Single-Signal AUC — all at chance level  [Fig2]")
+p("The discriminative AUC of surface signals S_max (max probability)·U_sc (uncertainty)·conflict for ct_miss/exact_mismatch/under_imaging "
+  "is all **≈0.50 (chance)**. Correlation with difficulty (oracle card) is also near 0:")
 table(
-    ["상관", "값"],
+    ["Correlation", "Value"],
     [["Spearman(U_sc, card)", "+0.074"], ["Spearman(S_max, card)", "−0.139"]],
-    "표 3.2 표층 신호는 난이도를 추적하지 못함")
-callout("핵심 동기 — 표층(softmax/불확실성)으로는 위험을 못 가린다. **내부 표상에 디코드 가능한 신호가 따로 있다**는 것이 "
-        "CARE-Probe의 출발점.")
+    "Table 3.2 Surface signals fail to track difficulty")
+callout("Core motivation — surface signals (softmax/uncertainty) cannot screen out risk. **That a separately decodable signal exists in the internal representation** "
+        "is the starting point of CARE-Probe.")
 
-h3("3.3 내부 프로브 판별력 — 8개 백본  [Fig2 / C-4]")
+h3("3.3 Internal Probe Discriminability — 8 backbones  [Fig2 / C-4]")
 table(
-    ["백본", "분류", "exact_mismatch", "ct_miss", "under_img"],
+    ["Backbone", "Class", "exact_mismatch", "ct_miss", "under_img"],
     [["gemma2-9b", "gen", "0.872±0.009", "0.773±0.009", "0.636±0.020"],
      ["llama31-8b", "gen", "0.758±0.011", "0.714±0.018", "0.680±0.008"],
      ["med42-8b", "med", "0.775±0.015", "0.713±0.015", "0.700±0.009"],
@@ -129,12 +129,12 @@ table(
      ["openbio-8b", "med", "0.627±0.014", "0.714±0.013", "0.650±0.012"],
      ["phi3mini-128k", "gen", "0.630±0.043", "0.616±0.015", "0.558±0.002"],
      ["qwen14b", "gen", "0.673±0.014", "0.630±0.022", "0.646±0.015"]],
-    "표 3.3 best probe AUC (mean±95%CI over seeds)")
-p("→ 일반신호(exact_mismatch) 0.63–0.87 **보편적**, harm-specific(ct_miss) 0.62–0.77 **분산** (백본 의존).")
+    "Table 3.3 Best probe AUC (mean±95%CI over seeds)")
+p("→ Generic signal (exact_mismatch) 0.63–0.87 **universal**, harm-specific (ct_miss) 0.62–0.77 **dispersed** (backbone-dependent).")
 
-h3("3.4 배치 단위 CRC 집계 — 8개 백본  [Fig4]")
+h3("3.4 Batch-Level CRC Aggregation — 8 backbones  [Fig4]")
 table(
-    ["백본", "분류", "commit", "joint_risk", "gap%", "AURC_probe"],
+    ["Backbone", "Class", "commit", "joint_risk", "gap%", "AURC_probe"],
     [["gemma2-9b", "gen", "0.881±0.020", "0.0771±0.0058", "67.7±1.5", "0.0508±0.0013"],
      ["llama31-8b", "gen", "0.505±0.012", "0.0790±0.0044", "61.1±1.8", "0.1541±0.0013"],
      ["med42-8b", "med", "0.512±0.013", "0.0786±0.0040", "68.1±2.1", "0.1496±0.0025"],
@@ -143,105 +143,105 @@ table(
      ["openbio-8b", "med", "0.318±0.017", "0.0760±0.0056", "45.4±0.8", "0.2429±0.0019"],
      ["phi3mini-128k", "gen", "0.277±0.016", "0.0756±0.0056", "2.7±2.4", "0.2770±0.0072"],
      ["qwen14b", "gen", "0.429±0.018", "0.0793±0.0054", "40.2±2.2", "0.1815±0.0034"]],
-    "표 3.4 results_main 집계 (8백본, mean±95%CI)")
+    "Table 3.4 results_main aggregation (8 backbones, mean±95%CI)")
 ul([
-    "**joint_risk ≤ α 성립 백본: 8/8** (평균 기준 전부 α=0.10선 왼쪽).",
-    "런 단위 성공률 **222/240 = 92.5%** (개별 런은 소표본 변동으로 일부 초과 가능).",
-    "general 평균 gap% = 45.1 (n=5) · medical 평균 gap% = 63.3 (n=3).",
+    "**Backbones satisfying joint_risk ≤ α: 8/8** (all left of the α=0.10 line on average).",
+    "Run-level success rate **222/240 = 92.5%** (individual runs may exceed due to small-sample variation).",
+    "General mean gap% = 45.1 (n=5) · medical mean gap% = 63.3 (n=3).",
 ])
 
-h3("3.5 메커니즘 검증 — gap% ↔ 배치 last-token ct_miss AUC  [C-3]")
-callout("**Pearson r = +0.831, Spearman ρ = +0.762** — 내부 신호 판별력이 높은 백본일수록 CRC 유용성(gap%)이 "
-        "단조 증가. '프로브 신호 → 선택적 이득'의 인과 메커니즘을 정량 검증.")
+h3("3.5 Mechanism Validation — gap% ↔ batch last-token ct_miss AUC  [C-3]")
+callout("**Pearson r = +0.831, Spearman ρ = +0.762** — the higher a backbone's internal-signal discriminability, the more its CRC utility (gap%) "
+        "increases monotonically. Quantitatively validates the causal mechanism 'probe signal → selective benefit'.")
 
-h3("3.6 강건성 — 시간이동(E-shift) · 중증도적응(E-sev)")
+h3("3.6 Robustness — Temporal Shift (E-shift) · Severity Adaptation (E-sev)")
 table(
-    ["설정", "지표", "값", "판정"],
+    ["Setting", "Metric", "Value", "Verdict"],
     [["E-shift (temporal, qwen14b)", "commit / joint_risk / gap%", "0.410±0.007 / 0.0720±0.0035 / 40.2±2.2", "≤ α ✅"],
-     ["E-sev high (ESI 1–2, α=0.05)", "commit / joint_risk / committed_harm", "0.152 / 0.0279±0.030 / 0.159", "2/3 seed OK"],
-     ["E-sev lower (ESI 3–5, α=0.15)", "commit / joint_risk / committed_harm", "0.612 / 0.132±0.007 / 0.217", "3/3 seed OK"]],
-    "표 3.6 분포이동·중증도적응 하 보장")
-p("→ 시간이동 하에서도 joint_risk ≤ α 유지. 중증도적응에서 **고위험군 강보호** 성립(high harm 0.159 < lower 0.217). "
-  "단 high-acuity는 소표본(n_te≈240)이라 1개 시드에서 간헐적 역전 [직접 확인 필요].")
+     ["E-sev high (ESI 1–2, α=0.05)", "commit / joint_risk / committed_harm", "0.152 / 0.0279±0.030 / 0.159", "2/3 seeds OK"],
+     ["E-sev lower (ESI 3–5, α=0.15)", "commit / joint_risk / committed_harm", "0.612 / 0.132±0.007 / 0.217", "3/3 seeds OK"]],
+    "Table 3.6 Guarantee under distribution shift·severity adaptation")
+p("→ joint_risk ≤ α is maintained even under temporal shift. Severity adaptation achieves **strong protection of the high-risk group** (high harm 0.159 < lower 0.217). "
+  "However, high-acuity is a small sample (n_te≈240), so one seed shows intermittent reversal [needs direct verification].")
 
 # ---------------------------------------------------------------- 4. B-2
-h2("4. B-2 — 4k Phi-3-mini Ablation (LongRoPE 교란 분리)")
-p("**물음**: MAIN에서 phi3mini-128k의 last-token ct_miss AUC가 chance(≈0.53)로 붕괴한 것이 "
-  "(a) 128k LongRoPE 장문맥 적응 탓인가, (b) 단순 grounding/scale 탓인가? "
-  "동일 파이프라인에 **비-128k 4k Phi**를 통과시켜 비교.")
+h2("4. B-2 — 4k Phi-3-mini Ablation (isolating LongRoPE confound)")
+p("**Question**: In MAIN, phi3mini-128k's last-token ct_miss AUC collapsed to chance (≈0.53). Is this due to "
+  "(a) the 128k LongRoPE long-context adaptation, or (b) simply grounding/scale? "
+  "Compared by passing a **non-128k 4k Phi** through the identical pipeline.")
 table(
-    ["모델", "토큰 위치", "ct_miss AUC (레이어별 최댓값)", "해석"],
-    [["Phi-3-mini-4k", "last", "0.561 (대부분 ≈0.50)", "여전히 붕괴"],
-     ["Phi-3-mini-4k", "prompt", "0.589–0.678", "프롬프트엔 신호 존재"],
-     ["Phi-3-mini-128k", "last", "≈0.532", "붕괴"],
-     ["Phi-3-mini-128k", "prompt", "0.624", "프롬프트엔 신호 존재"]],
-    "표 4a. 4k vs 128k Phi — last/prompt 토큰 ct_miss 판별력")
+    ["Model", "Token position", "ct_miss AUC (max across layers)", "Interpretation"],
+    [["Phi-3-mini-4k", "last", "0.561 (mostly ≈0.50)", "still collapsed"],
+     ["Phi-3-mini-4k", "prompt", "0.589–0.678", "signal present in prompt"],
+     ["Phi-3-mini-128k", "last", "≈0.532", "collapsed"],
+     ["Phi-3-mini-128k", "prompt", "0.624", "signal present in prompt"]],
+    "Table 4a. 4k vs 128k Phi — last/prompt token ct_miss discriminability")
 table(
-    ["B-2 CRC (phi3mini-4k, 30런)", "값"],
-    [["joint_risk ≤ α 위반", "2/30 (sub43-s51=0.109, sub44-s50=0.129)"],
-     ["gap_closed 평균", "≈ 0 (sub43은 음수대)"]],
-    "표 4b. 4k Phi의 CRC — 보장은 대체로 유지, 유용성은 소멸")
-callout("**판정** — 4k의 last-token 최대 AUC 0.561(<0.60)로 **128k와 동일하게 붕괴**. 따라서 last-token 신호 붕괴는 "
-        "**LongRoPE(128k) 탓이 아니라 Phi의 grounding/scale 특성**. → 원고에 *정직한 Limitation*으로 기술(교란 아님). "
-        "한편 보장(joint_risk≤α)은 약한 백본에서도 대체로 유지되나 유용성(gap)은 소멸 → '안전성과 유용성의 분리'를 재확인.")
+    ["B-2 CRC (phi3mini-4k, 30 runs)", "Value"],
+    [["joint_risk ≤ α violations", "2/30 (sub43-s51=0.109, sub44-s50=0.129)"],
+     ["gap_closed mean", "≈ 0 (sub43 in negative range)"]],
+    "Table 4b. 4k Phi's CRC — guarantee largely maintained, utility vanishes")
+callout("**Verdict** — the 4k's max last-token AUC of 0.561 (<0.60) is **collapsed identically to 128k**. Hence last-token signal collapse is "
+        "**not due to LongRoPE (128k) but a grounding/scale property of Phi**. → Described in the manuscript as an *honest Limitation* (not a confound). "
+        "Meanwhile the guarantee (joint_risk≤α) is largely maintained even in weak backbones while utility (gap) vanishes → reconfirms the 'separation of safety and utility'.")
 
 # ---------------------------------------------------------------- 5. B-3
-h2("5. B-3 — Qwen-14B Full-Cohort 헤드라인 (N=7,814)")
-p("드래프트가 PRIMARY를 'full cohort'로 언급 → 헤드라인을 full-n으로 낼 수 있는지 1회 실행으로 확인. "
-  "추출 17.5시간(7.95s/stay, valid 7,814/7,823), 이후 CRC 10 split-seed.")
+h2("5. B-3 — Qwen-14B Full-Cohort Headline (N=7,814)")
+p("The draft refers to PRIMARY as 'full cohort' → confirmed in a single run whether the headline can be produced at full-n. "
+  "Extraction 17.5 hours (7.95s/stay, valid 7,814/7,823), then CRC over 10 split-seeds.")
 table(
-    ["스케일", "gap%", "joint_risk", "commit", "런 수"],
+    ["Scale", "gap%", "joint_risk", "commit", "# runs"],
     [["full-n (N=7,814)", "50.2", "0.0906", "0.516", "10"],
-     ["n=2,000 (대비)", "40.2", "0.0793", "0.429", "30"]],
-    "표 5a. full-n vs n=2,000 헤드라인 대비 (qwen14b)")
+     ["n=2,000 (comparison)", "40.2", "0.0793", "0.429", "30"]],
+    "Table 5a. full-n vs n=2,000 headline comparison (qwen14b)")
 table(
     ["split_seed", "joint_risk", "commit", "gap_closed", "≤0.10?"],
     [["42", "0.0955", "0.536", "0.496", "✅"],
      ["43", "0.0670", "0.441", "0.506", "✅"],
      ["44", "0.0896", "0.521", "0.507", "✅"],
-     ["45", "0.1006", "0.537", "0.496", "⚠️ 경계초과"],
+     ["45", "0.1006", "0.537", "0.496", "⚠️ boundary exceeded"],
      ["46", "0.0934", "0.505", "0.503", "✅"],
      ["47", "0.0883", "0.523", "0.492", "✅"],
      ["48", "0.0981", "0.528", "0.505", "✅"],
      ["49", "0.0874", "0.504", "0.497", "✅"],
      ["50", "0.0870", "0.545", "0.510", "✅"],
      ["51", "0.0989", "0.523", "0.507", "✅"]],
-    "표 5b. full-n split-seed별 joint_risk (mean 0.0906, 95%CI [0.084, 0.098])")
-callout("**판정** — full-n에서도 **joint_risk 0.0906 ≤ α=0.10 (CI 상한 0.098)**, 9/10 시드 개별 충족(seed45만 0.1006 "
-        "경계초과; marginal 보장이라 이론과 무모순). 더 중요한 건 **유사가 아니라 더 강함**: gap_closed 40.2→**50.2%**, "
-        "commit 0.429→**0.516**. 데이터가 늘며 conformal 임계가 덜 보수적 → α 예산을 제대로 소진 → 같은 보장 하 유용성↑. "
-        "→ 바람직한 스케일링 특성.")
+    "Table 5b. full-n joint_risk by split-seed (mean 0.0906, 95%CI [0.084, 0.098])")
+callout("**Verdict** — even at full-n, **joint_risk 0.0906 ≤ α=0.10 (CI upper bound 0.098)**, individually satisfied for 9/10 seeds (only seed45 at 0.1006 "
+        "exceeds the boundary; consistent with theory since the guarantee is marginal). More importantly, it is **not merely similar but stronger**: gap_closed 40.2→**50.2%**, "
+        "commit 0.429→**0.516**. As data grows, the conformal threshold becomes less conservative → the α budget is properly consumed → utility↑ under the same guarantee. "
+        "→ A desirable scaling property.")
 
-# ---------------------------------------------------------------- 6. 종합
-h2("6. 종합 판정 및 원고 반영 방향")
+# ---------------------------------------------------------------- 6. synthesis
+h2("6. Overall Verdict and Manuscript Integration Directions")
 ul([
-    "**(보장의 보편성)** joint_risk ≤ α 가 **8/8 백본 · full-cohort · 시간이동 · 중증도적응** 전 조건에서 성립 → 핵심 안전 주장 견고.",
-    "**(메커니즘)** gap% ↔ probe AUC **r=0.83** → '내부 신호 → 선택적 이득' 인과 검증.",
-    "**(안전성·유용성 분리)** 안전성은 약한 백본(Phi 4k/128k)에서도 유지, 유용성(gap)은 **디코드 가능한 내부 신호가 있는 백본에서만** 발생.",
-    "**(B-2)** last-token 붕괴 = scale/grounding(LongRoPE 아님) → 정직한 Limitation으로 기술.",
-    "**(B-3)** full-n에서 보장 유지·강화 → **헤드라인(qwen14b)은 full-n으로**, 8-백본 교차표는 **N=2,000 통일 유지**(혼합-N 회피). 두 N을 본문에 명시.",
+    "**(Universality of guarantee)** joint_risk ≤ α holds across **all conditions — 8/8 backbones · full-cohort · temporal shift · severity adaptation** → the core safety claim is robust.",
+    "**(Mechanism)** gap% ↔ probe AUC **r=0.83** → causal validation of 'internal signal → selective benefit'.",
+    "**(Safety·utility separation)** Safety is maintained even in weak backbones (Phi 4k/128k), while utility (gap) arises **only in backbones with a decodable internal signal**.",
+    "**(B-2)** last-token collapse = scale/grounding (not LongRoPE) → describe as an honest Limitation.",
+    "**(B-3)** guarantee maintained·strengthened at full-n → **use full-n for the headline (qwen14b)**, keep the 8-backbone cross-table **unified at N=2,000** (avoid mixed-N). State both N in the text.",
 ])
-callout("**남은 작업** — (1) 원고 §결과/한계에 위 5개 항목 반영, (2) Fig2/Fig3/Fig4/Fig6 캡션과 본문 수치 동기화(Claim-Evidence Map), "
-        "(3) E-sev high-acuity 소표본 변동을 한계로 명시. 실험 자체는 **전부 완료** — 추가 GPU 런 불필요.")
+callout("**Remaining work** — (1) reflect the above 5 items in the manuscript §Results/Limitations, (2) synchronize Fig2/Fig3/Fig4/Fig6 captions with in-text numbers (Claim-Evidence Map), "
+        "(3) state E-sev high-acuity small-sample variation as a limitation. The experiments themselves are **all complete** — no additional GPU runs needed.")
 
-# ---------------------------------------------------------------- 7. 파일 인덱스
-h2("7. 산출물 / 파일 인덱스")
+# ---------------------------------------------------------------- 7. file index
+h2("7. Artifacts / File Index")
 table(
-    ["경로", "내용"],
-    [["cohort_v2.csv (7,823) / cohort_v2_stats.json", "코호트 + 통계"],
-     ["cross_validate_report.txt", "legacy 교차검증(표 1c)"],
-     ["runs_m15/ (BATCH_SUMMARY, *_metrics.json, *_report.txt)", "RAG 베이스라인 3시드"],
-     ["runs_main/results_main.csv + analysis/stage1_results.txt", "MAIN 집계·Stage-1 분석(3장)"],
-     ["runs_main/probe_*_n2000_seed{42,43,44}.npz (24개)", "8백본 hidden-state 추출"],
-     ["runs_b2/results_b2.csv + logs/, runs_b2_console.log", "B-2 4k Phi ablation(4장)"],
-     ["runs_b3/results_b3.csv + logs/, runs_b3_console.log", "B-3 full-cohort(5장)"],
-     ["runs_main/rc_mediphi_seed42.csv", "Fig3 risk-coverage 곡선"]],
-    "표 7. 핵심 산출물")
-p(f"본 리포트 생성: _make_report.py · {STAMP}. 모든 수치는 위 파일에서 직접 추출.")
+    ["Path", "Content"],
+    [["cohort_v2.csv (7,823) / cohort_v2_stats.json", "cohort + statistics"],
+     ["cross_validate_report.txt", "legacy cross-validation (Table 1c)"],
+     ["runs_m15/ (BATCH_SUMMARY, *_metrics.json, *_report.txt)", "RAG baseline, 3 seeds"],
+     ["runs_main/results_main.csv + analysis/stage1_results.txt", "MAIN aggregation·Stage-1 analysis (Sec. 3)"],
+     ["runs_main/probe_*_n2000_seed{42,43,44}.npz (24 files)", "8-backbone hidden-state extraction"],
+     ["runs_b2/results_b2.csv + logs/, runs_b2_console.log", "B-2 4k Phi ablation (Sec. 4)"],
+     ["runs_b3/results_b3.csv + logs/, runs_b3_console.log", "B-3 full-cohort (Sec. 5)"],
+     ["runs_main/rc_mediphi_seed42.csv", "Fig3 risk-coverage curve"]],
+    "Table 7. Key artifacts")
+p(f"This report generated by: _make_report.py · {STAMP}. All numbers extracted directly from the files above.")
 
-# ============================================================ 렌더러
+# ============================================================ renderer
 def split_bold(text):
-    """**bold** 토글 → [(segment, is_bold), ...]"""
+    """**bold** toggle → [(segment, is_bold), ...]"""
     out, bold = [], False
     for i, seg in enumerate(text.split("**")):
         if seg:
@@ -268,8 +268,8 @@ def render_html():
     strong{color:#1f3a63;}
     .meta{color:#666;font-size:13px;}
     """
-    h = ['<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">',
-         '<title>CARE-Probe 실험결과 종합</title><style>', css, '</style></head><body>']
+    h = ['<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">',
+         '<title>CARE-Probe Experiment Results Summary</title><style>', css, '</style></head><body>']
     def inl(t):
         return "".join(
             (f"<strong>{_html.escape(s)}</strong>" if b else _html.escape(s))
@@ -279,7 +279,7 @@ def render_html():
         if k in ("h1", "h2", "h3"):
             h.append(f"<{k}>{_html.escape(blk[1])}</{k}>")
         elif k == "p":
-            cls = ' class="meta"' if blk[1].startswith("본 리포트") or blk[1].startswith("대상 디렉터리") else ""
+            cls = ' class="meta"' if blk[1].startswith("This report generated by") or blk[1].startswith("Target directory") else ""
             h.append(f"<p{cls}>{inl(blk[1])}</p>")
         elif k == "callout":
             h.append(f'<div class="callout">{inl(blk[1])}</div>')
@@ -297,7 +297,7 @@ def render_html():
                 h.append(f"<caption>{_html.escape(cap)}</caption>")
             h.append("</table>")
     h.append("</body></html>")
-    out = HERE / "CARE-Probe_실험결과_종합.html"
+    out = HERE / "CARE-Probe_experiment_results_summary.html"
     out.write_text("\n".join(h), encoding="utf-8")
     return out
 
@@ -349,7 +349,7 @@ def render_docx():
             if cap:
                 cp = doc.add_paragraph(); rr = cp.add_run(cap)
                 rr.italic = True; rr.font.size = Pt(8.5); rr.font.color.rgb = RGBColor(0x66,0x66,0x66)
-    out = HERE / "CARE-Probe_실험결과_종합.docx"
+    out = HERE / "CARE-Probe_experiment_results_summary.docx"
     doc.save(str(out))
     return out
 

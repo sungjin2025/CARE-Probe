@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""정본 파이프라인으로 walkthrough 3케이스 s(x)/commit/ct_miss 재검증(결정적)."""
+"""Re-verify (deterministically) s(x)/commit/ct_miss for the 3 walkthrough cases using the canonical pipeline."""
 import sys, os, numpy as np, pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import paths, imaging_runner_v2 as ir

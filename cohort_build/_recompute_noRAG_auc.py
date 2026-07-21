@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-"""noRAG(closed-book) deployed last-token probe AUC 재계산.
-기존 _recompute_lasttoken_auc.py의 파이프라인을 그대로 재사용(동일 정의 보장):
+"""Recompute the noRAG (closed-book) deployed last-token probe AUC.
+Reuses the pipeline of _recompute_lasttoken_auc.py verbatim (same definition guaranteed):
  position=last, layer=idx3(0.875), target=ct_miss, StdScaler->PCA50->Logistic,
- 5-fold StratifiedKFold(seed=42) cross_val_predict, 3 generation sub-seed 평균.
-대상: runs_e0/noRAG_2k_s{42,43,44}.npz (manifest §11 미검증 잔여 0.67 검증).
-대조군으로 RAG main qwen14b(0.621)도 재출력.
+ 5-fold StratifiedKFold(seed=42) cross_val_predict, averaged over 3 generation sub-seeds.
+Input: runs_e0/noRAG_2k_s{42,43,44}.npz (verifies the unverified residual 0.67 in manifest §11).
+Also re-emits the RAG main qwen14b (0.621) as a control.
 """
 import math, statistics as st
 import numpy as np
 from pathlib import Path
-import _recompute_lasttoken_auc as R   # 동일 파이프라인 재사용
+import _recompute_lasttoken_auc as R   # reuse the same pipeline
 
 HERE = Path(__file__).resolve().parent
 SEEDS = [42, 43, 44]
@@ -39,10 +39,10 @@ for sd in SEEDS:
 m, h = summarize(aucs)
 bm, bh = summarize(bases)
 print(f"  --> 3-seed mean AUC = {m:.4f} ± {h:.4f}   base_ctmiss mean = {bm:.4f}")
-print(f"  manifest 주장: noRAG AUC ~0.67, base 0.178")
+print(f"  manifest claim: noRAG AUC ~0.67, base 0.178")
 
-# 대조군: RAG main qwen14b (이미 검증된 0.621)
-print("\n=== [대조] RAG main qwen14b last@idx3 (manifest 0.621) ===")
+# control: RAG main qwen14b (already verified 0.621)
+print("\n=== [control] RAG main qwen14b last@idx3 (manifest 0.621) ===")
 (qm, qh), _, _, qbase = R.run_model("qwen14b")
 print(f"  qwen14b RAG: last@idx3 = {qm:.4f} ± {qh:.4f}  base_ctmiss = {qbase:.4f}  (manifest 0.621, base 0.247)")
-print(f"\n=== 비교: noRAG {m:.3f} vs RAG {qm:.3f}  (manifest 'comparable 0.67 vs 0.62') ===")
+print(f"\n=== comparison: noRAG {m:.3f} vs RAG {qm:.3f}  (manifest 'comparable 0.67 vs 0.62') ===")

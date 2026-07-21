@@ -3,7 +3,7 @@
 """e0x_deployed_surface_runner.py — E0X: deployed-protocol multi-backbone
 surface-signal screening on the MAIN n=2,000 subsample.
 
-Motivation (design: proposals/99.단계별_진행자료/E0X_deployed_surface_design.md):
+Motivation (design: proposals/E0X_deployed_surface_design.md):
 the manuscript's negative result (four surface signals at chance) rests on the
 E0 screen — single backbone (Qwen), n=500, per-source majority-vote protocol.
 E0X re-measures every deployable surface signal
@@ -25,7 +25,7 @@ Evidence modes (--evidence_mode):
              (= imaging_runner_v2 msrc fusion, manuscript §4.1 description)
 Pass --main_npz to verify subsample alignment (stay_id sets) and report
 greedy-prediction agreement with the MAIN pred_bits — this settles which
-evidence mode reproduces the MAIN generation (memory 미결① §4.2 확인).
+evidence mode reproduces the MAIN generation (resolves open item #1, §4.2).
 
 Generation calls per stay: greedy 1 + self-consistency 1 batched (N seqs)
 + per-source 3  →  9 sequences / stay; n=2000 → 18,000 sequences per backbone.

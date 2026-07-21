@@ -15,17 +15,17 @@ cd "$(dirname "$0")"
 EMBED=/path/to/models/Alibaba-NLP/gte-large-en-v1.5
 MROOT=/path/to/models
 GPU=6
-N=2000                                          # -1 = full-n (헤드라인용)
-SUB_SEEDS="42 43 44"                             # subsample seeds → 별도 추출 (subsample 변동)
-SPLIT_SEEDS="42 43 44 45 46 47 48 49 50 51"      # calib/test split seeds → CI (CPU, 쌈)
-LAYER_IDX=3                                      # a-priori 고정 레이어 위치 0..4 (=깊이 0.5..1.0); test로 안 고름
+N=2000                                          # -1 = full-n (for headline)
+SUB_SEEDS="42 43 44"                             # subsample seeds -> separate extraction (subsample variation)
+SPLIT_SEEDS="42 43 44 45 46 47 48 49 50 51"      # calib/test split seeds -> CI (CPU, cheap)
+LAYER_IDX=3                                      # a-priori fixed layer position 0..4 (=depth 0.5..1.0); not tuned on test
 LOSS=ct_miss
 ALPHA=0.10
 DELTA=0.10
 SHIFT_CSV=stay_anchor_year.csv
 OUTDIR=runs_main
 RESULTS=$OUTDIR/results_main.csv
-PRIMARY=qwen14b                                 # E-shift+E-sev 추가로 받는 모델
+PRIMARY=qwen14b                                 # model that additionally gets E-shift+E-sev
 
 declare -A MODELS=(
   [qwen14b]="$MROOT/Qwen/Qwen2.5-14B-Instruct"
@@ -41,7 +41,7 @@ ORDER="qwen14b llama31-8b gemma2-9b mistral7b-v03 med42-8b openbio-8b phi3mini-1
 # ============================================================
 
 export CRMSR_ENV=server
-export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python   # SentencePiece 토크나이저(Mistral/Phi) 대비
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python   # guard for SentencePiece tokenizer (Mistral/Phi)
 mkdir -p "$OUTDIR/logs"
 echo "[main] N=$N sub=($SUB_SEEDS) split=($SPLIT_SEEDS) layer_idx=$LAYER_IDX loss=$LOSS -> $RESULTS"
 echo "[main] started $(date '+%F %T')"
@@ -85,7 +85,7 @@ for m in $ORDER; do
           --tag "${m}|sub${sub}|shift" --results_csv "$RESULTS" \
           >> "$OUTDIR/logs/crc_${m}_shift_seed${sub}.log" 2>&1
       done
-      # E-sev: per-group은 results_csv가 아니라 로그에 (그룹별 보장은 로그 파싱)
+      # E-sev: per-group goes to the log, not results_csv (per-group guarantee is parsed from the log)
       python e0_crc.py --npz "$npz" --window full --loss "$LOSS" --probe_target loss \
         --layer_idx "$LAYER_IDX" --alpha "$ALPHA" --delta "$DELTA" --seed 42 \
         --mondrian --alpha_high 0.05 --alpha_low 0.15 \

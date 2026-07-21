@@ -7,7 +7,7 @@ pooled multivariate model, reports 5-fold out-of-fold logistic AUC (mirrors the
 manuscript's B2 methodology / single-feature logistic protocol) with a
 case-level bootstrap 95% CI, against both targets (ct_miss primary, y_err).
 
-Pre-registered verdict (design §1.4 — 정직 조항, no post-hoc selection):
+Pre-registered verdict (design §1.4 — honesty clause, no post-hoc selection):
   UPHELD  : bootstrap CI upper bound < 0.65 (excludes clinically useful signal)
   REVISE  : bootstrap CI lower bound > 0.55 (signal present → manuscript claim
             must be re-scoped for this backbone/signal; do not suppress)

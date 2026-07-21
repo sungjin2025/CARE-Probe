@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""extract_arms_REAL.py — CARE-Probe chart-review arm 추출 (실데이터, JMS 정합).
+"""extract_arms_REAL.py — CARE-Probe chart-review arm extraction (real data, JMS-aligned).
 
-e0_crc.run_real 의 keep-filter / 40-30-30 split / probe(layer_idx3, target=ct_miss)
-/ select_lambda 를 **그대로 재현**해 배포 operating point를 만들고, TEST split에서
-3-arm(A commit&ct_miss / B defer / C commit&correct)을 뽑아 판정 시트를 채운다.
+Reproduces e0_crc.run_real's keep-filter / 40-30-30 split / probe(layer_idx3,
+target=ct_miss) / select_lambda **exactly** to build the deployment operating point,
+then draws the 3 arms (A commit&ct_miss / B defer / C commit&correct) from the TEST
+split to populate the adjudication sheet.
 
-재현성: seed 고정. Qwen 전체코호트(runs_b3) 기본.
-출력: OUT_DIR 에 판정시트_채움_*.csv + case_id_매핑_*.csv
+Reproducibility: fixed seed. Defaults to the full Qwen cohort (runs_b3).
+Output: adjudication sheet + case_id mapping CSVs written to OUT_DIR.
 """
 from __future__ import annotations
 import argparse, csv, os, sys
@@ -18,17 +19,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import paths
 import imaging_runner_v2 as ir
-from e0_crc import _fit_probe_scores, select_lambda   # 정본 그대로 재사용
+from e0_crc import _fit_probe_scores, select_lambda   # reuse the canonical implementation as-is
 
 LABELS = list(ir.LABEL_SPACE_V2)
 CT = [L for L in LABELS if L.startswith("CT_")]
 OUT_DIR = os.environ.get("OUT_DIR", "/path/to/output")
 
-# 비식별 임상 텍스트 필드(진단/인종 등 결과·편향 유발 컬럼 제외)
-TEXT_COLS = [("age", "연령"), ("gender", "성별"), ("arrival_transport", "내원수단"),
-             ("triage", "ESI"), ("chiefcomplaint", "주호소"), ("pain", "통증"),
-             ("temperature", "체온"), ("heartrate", "HR"), ("resprate", "RR"),
-             ("o2sat", "SpO2"), ("sbp", "SBP"), ("dbp", "DBP"), ("hpi_clean", "현병력")]
+# De-identified clinical text fields (excludes outcome/bias-inducing columns such as diagnosis/race)
+TEXT_COLS = [("age", "Age"), ("gender", "Sex"), ("arrival_transport", "Arrival mode"),
+             ("triage", "ESI"), ("chiefcomplaint", "Chief complaint"), ("pain", "Pain"),
+             ("temperature", "Temp"), ("heartrate", "HR"), ("resprate", "RR"),
+             ("o2sat", "SpO2"), ("sbp", "SBP"), ("dbp", "DBP"), ("hpi_clean", "HPI")]
 FIELDS = ["case_id", "case_text", "exam_under_review", "q1_indication",
           "q2_harm_if_omitted", "q3_missed_by_practice", "q3_practice_harm", "note", "time_min"]
 
@@ -64,7 +65,7 @@ def main():
     coh = coh[[c for c in dict.fromkeys(gcols) if c in coh.columns]].copy()
     gmap = {int(r["stay_id"]): r for _, r in coh.iterrows()}
 
-    # ---- e0_crc.run_real 재현: keep + labels ----
+    # ---- reproduce e0_crc.run_real: keep + labels ----
     keep, y_err, l_ct = [], [], []
     for i, sid in enumerate(sids):
         if valid[i] != 1:
@@ -79,11 +80,11 @@ def main():
         ctg = {L for L in CT if L in gold}
         l_ct.append(int(len(ctg - pred) > 0) if ctg else 0)
     keep = np.array(keep); l_ct = np.array(l_ct, float)
-    y_probe = l_ct.astype(int)                                  # probe_target=loss(ct_miss)
+    y_probe = l_ct.astype(int)                                  # probe target = loss(ct_miss)
     li = args.layer_idx if 0 <= args.layer_idx < len(layer_idx) else len(layer_idx) - 1
     X = last[keep][:, li, :].astype(np.float32)
 
-    # ---- 40/30/30 split (동일 rng) ----
+    # ---- 40/30/30 split (same rng) ----
     rng = np.random.default_rng(args.seed)
     idx = rng.permutation(len(keep))
     n = len(idx); n_tr, n_ca = int(0.4 * n), int(0.3 * n)
@@ -96,7 +97,7 @@ def main():
     print(f"[repro] N_usable={n} test={len(te)} lambda={lam:.4f} commit={commit.mean():.3f} "
           f"joint={joint:.4f}(<= {args.alpha}) cond={cond:.4f} ct_base={l_ct.mean():.3f}")
 
-    # ---- arm 분류(TEST) ----
+    # ---- arm classification (TEST) ----
     te_ct = l_ct[te].astype(int)
     armA = [te[k] for k in range(len(te)) if commit[k] and te_ct[k] == 1]
     armB = [te[k] for k in range(len(te)) if not commit[k]]
@@ -108,7 +109,7 @@ def main():
     chosen = [(int(keep[j]), "A") for j in pick(armA, args.nA)] \
            + [(int(keep[j]), "B") for j in pick(armB, args.nB)] \
            + [(int(keep[j]), "C") for j in pick(armC, args.nC)]
-    rng2.shuffle(chosen)                                        # arm 블라인딩
+    rng2.shuffle(chosen)                                        # arm blinding
 
     rows, mapping = [], []
     for n_i, (row_i, arm) in enumerate(chosen, 1):
@@ -128,15 +129,15 @@ def main():
                          "q3_missed_by_practice": "", "q3_practice_harm": "", "note": "", "time_min": ""})
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    sheet = os.path.join(OUT_DIR, f"판정시트_채움_{args.tag}.csv")
-    mapf = os.path.join(OUT_DIR, f"case_id_매핑_{args.tag}.csv")
+    sheet = os.path.join(OUT_DIR, f"adjudication_sheet_{args.tag}.csv")
+    mapf = os.path.join(OUT_DIR, f"case_id_mapping_{args.tag}.csv")
     with open(sheet, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.DictWriter(f, fieldnames=FIELDS); w.writeheader(); w.writerows(rows)
     with open(mapf, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.DictWriter(f, fieldnames=["case_id", "stay_id", "arm", "missed_ct", "model_pred"])
         w.writeheader(); w.writerows(mapping)
     print(f"[OK] cases={len(chosen)} rows={len(rows)} -> {sheet}")
-    print(f"[OK] map -> {mapf}  (연구팀 비공개 보관)")
+    print(f"[OK] map -> {mapf}  (keep private within the research team)")
 
 
 if __name__ == "__main__":

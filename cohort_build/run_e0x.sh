@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # run_e0x.sh — E0X: deployed-protocol surface-signal screening, 3 backbones.
-# Design: proposals/99.단계별_진행자료/E0X_deployed_surface_design.md (approved 2026-07-14)
+# Design: proposals/99.stepwise_progress_materials/E0X_deployed_surface_design.md (approved 2026-07-14)
 # GPU 1 (user directive 2026-07-14). GPU 6 = CR-MSR — DO NOT USE.
 #
 # Server usage:
@@ -9,7 +9,7 @@
 #   nohup bash run_e0x.sh > runs_e0x/run_e0x.out 2>&1 &
 #
 # NOTE model paths: verify with `ls /path/to/models/` before
-# launch — MediPhi/Gemma dir names below are [직접 확인 필요] placeholders.
+# launch — MediPhi/Gemma dir names below are [verify manually] placeholders.
 set -u
 
 export CRMSR_ENV=server
