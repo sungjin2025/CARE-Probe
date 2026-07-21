@@ -4,7 +4,7 @@ Code and cohort-build scripts for:
 
 > **CARE-Probe: Risk-Controlled Physician Deferral for On-Premise Medical LLMs**
 > Sung Jin Jang, Beakcheol Jang. Graduate School of Information, Yonsei University.
-> *Journal of Medical Systems* (under review, 2026).
+> *Journal of Medical Systems* (in preparation, 2026).
 
 CARE-Probe is a deployable safety mechanism for governing LLM-based clinical decision
 support. It reads a model's internal state with a lightweight linear probe and wraps the
@@ -45,9 +45,21 @@ cohort_build/          all runnable code
   e0_aggregate.py      result aggregation
   e0x_deployed_surface_runner.py / e0x_analyze.py    deployed-surface diagnostic (concat vs fused)
   run_*.sh             experiment drivers (B-2/B-3/B-4, C-2/C-3, E0X)
+  b1_setloss_cert.py               two-sided set-loss certification, alpha grid (S4)
+  power_note_sz.py                 calibration-set size power note (S8)
+  _matched_pair.py                 matched general<->medical pair analysis (S9)
+  _delta_sweep.py                  delta-sensitivity sweep (S10)
+  c2_local_headtohead.py           lightweight head-to-head: probe vs cardinality vs random (S12)
+  _e0_pilot_layer_replication.py   pilot layer-grid basis (S20)
+  _shift_probe_auc_replication.py  probe discrimination under temporal shift (S21)
+  _random_score_crc_baseline.py    random-score CRC non-vacuity baseline (S16)
+  _single_label_dilution.py        single-label control (S17)
+  _subgroup_audit.py               demographic equity audit (S18)
+  _esi3_threegroup_mondrian.py     ESI-3 three-group severity budget (S19)
   paths.py             environment-dependent paths (dev / server)
   requirements_server.txt   Python dependencies
   SERVER_SETUP.md      GPU + Milvus setup notes
+results/               aggregate result tables (no patient data; map to Online Resources)
 ```
 
 ---
@@ -91,11 +103,52 @@ bash cohort_build/run_b4_3seed.sh                   # B-4: no-retrieval ablation
 bash cohort_build/run_c2_baselines.sh               # C-2: head-to-head baselines
 bash cohort_build/run_c3_shift_sev_allbackbones.sh  # C-3: temporal shift + severity (8 backbones)
 bash cohort_build/run_e0x.sh                        # E0X: deployed-surface diagnostic
+
+# 5. Supplementary certifications and baselines (aggregate outputs in results/)
+python cohort_build/b1_setloss_cert.py                 # S4:  two-sided set-loss certification (alpha grid)
+python cohort_build/power_note_sz.py                   # S8:  calibration-set size power note
+python cohort_build/_matched_pair.py                   # S9:  matched general<->medical pair analysis
+python cohort_build/_delta_sweep.py                    # S10: delta-sensitivity of the guarantee
+python cohort_build/c2_local_headtohead.py             # S12: probe vs cardinality vs random under frozen CRC
+
+# 6. Internal-review reproductions (aggregate outputs in results/, mapped to Online Resources)
+python cohort_build/_e0_pilot_layer_replication.py     # S20: probe-layer pilot grid basis
+python cohort_build/_shift_probe_auc_replication.py    # S21: probe discrimination measured under temporal shift
+python cohort_build/_random_score_crc_baseline.py      # S16: random-score CRC baseline (non-vacuity)
+python cohort_build/_single_label_dilution.py          # S17: single-label control (failure is not multi-label dilution)
+python cohort_build/_subgroup_audit.py                 # S18: demographic equity audit of the global policy
+python cohort_build/_esi3_threegroup_mondrian.py       # S19: ESI-3 three-group severity budget
 ```
 
-Reproducibility: greedy decoding (deterministic); probe layer fixed a priori at relative
-depth 0.875; subsample/split seeds {42, 43, 44} × {42…51}; α = δ = 0.10. See
-`SERVER_SETUP.md` for environment details.
+Reproducibility: greedy decoding (deterministic); the probe layer is fixed at relative
+depth 0.875 — selected on a single-backbone pilot screen (Qwen2.5-14B, n=500;
+`results/pilot_layer_grid.csv`) and frozen before the multi-seed MAIN protocol and all
+test-set evaluations (not tuned to the certified CT-miss loss); subsample/split seeds
+{42, 43, 44} × {42…51}; α = δ = 0.10. See `SERVER_SETUP.md` for environment details.
+
+---
+
+## Aggregate results (`results/`)
+
+The `results/` directory holds **aggregate statistics only** (per-backbone / per-group /
+per-seed; no patient-level rows), matching the manuscript's supplementary tables. These
+are the reproduction targets — running the scripts above on your locally regenerated
+cohort should recover them.
+
+| File | Online Resource | Content |
+|------|-----------------|---------|
+| `results_b3.csv` | S2 | full-cohort scale-up (N = 7,814), per split seed |
+| `b4_3seed.csv` | S3 | no-retrieval ablation, 3 sub-seeds × 10 split-seeds per arm |
+| `b1_setloss_results.csv` | S4 | two-sided set-loss certification over the α grid |
+| `delta_sweep_results.csv` | S10 | δ-sensitivity of the guarantee |
+| `accuracy_8backbone.csv` | S13 | off-the-shelf generation accuracy, 8 backbones |
+| `alpha_sweep_B5_results.csv` | S15 | risk-budget (α) sweep |
+| `pilot_layer_grid.csv` | S20 | pilot position×layer probe AUC grid |
+| `random_score_crc_baseline.csv` | S16 | probe vs random-score commit at the same certified joint risk |
+| `single_label_dilution.csv` | S17 | surface-signal AUC: multi-label vs single-label decision |
+| `subgroup_audit_{qwen14b,8backbone}.csv` | S18 | commit / joint risk decomposed by age, sex, race |
+| `esi3_threegroup_{qwen14b,8backbone}.csv` | S19 | ESI-3 isolated three-group Mondrian budget |
+| `shift_probe_auc_replication.csv` | S21 | probe discrimination trained on earlier bins, tested on 2017–2019 |
 
 ---
 
@@ -107,7 +160,7 @@ depth 0.875; subsample/split seeds {42, 43, 44} × {42…51}; α = δ = 0.10. Se
   author = {Jang, Sung Jin and Jang, Beakcheol},
   journal= {Journal of Medical Systems},
   year   = {2026},
-  note   = {Under review}
+  note   = {In preparation}
 }
 ```
 
