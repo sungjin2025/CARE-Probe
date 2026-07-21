@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """_single_label_dilution.py — direct control for the multi-label dilution
-hypothesis (internal-review item R2-W1; Online Resource 17).
+hypothesis (Online Resource 17).
 
 Challenge addressed: surface signals (logprob etc.) reach error-prediction
 AUC > 0.7 on single-answer QA yet fail at 0.50-0.53 here — is the cause

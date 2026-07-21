@@ -4,7 +4,7 @@
 
 Reads results_main.csv (one row per model x subsample_seed x split_seed x mode),
 groups by (model, mode), and reports mean +/- 95% CI over all seeds for each metric.
-=> the multi-seed table that answers "no seed repetition" reviewer concern.
+=> the multi-seed table (subsample x split seeds) for CI reporting.
 
 Usage:
   python e0_aggregate.py --results_csv runs_main/results_main.csv

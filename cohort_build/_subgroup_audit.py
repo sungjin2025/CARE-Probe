@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """_subgroup_audit.py — demographic subgroup equity audit of the global policy
-(an audit, NOT per-group certification; internal-review item R3-W5;
+(an audit, NOT per-group certification;
 Online Resource 18).
 
 Motivation: the practice-based gold label encodes documented demographic

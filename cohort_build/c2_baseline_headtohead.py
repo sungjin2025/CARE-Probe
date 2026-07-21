@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """c2_baseline_headtohead.py — head-to-head: CARE-Probe vs prior deferral signals.
 
-Mock-review R2-W3/Q5 + meta Tier1-8: compare CARE-Probe against existing
+Compare CARE-Probe against existing
 deferral approaches ON THE SAME COHORT, SAME CRC/AURC machinery. We hold the
 guarantee pipeline fixed (e0_crc.select_lambda / risk_coverage) and swap only the
 deferral score s(x):

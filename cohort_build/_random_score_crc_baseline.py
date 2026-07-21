@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """_random_score_crc_baseline.py — random-score CRC deployment baseline
-(internal-review item DA-M1; Online Resource 16).
+(Online Resource 16).
 
 Challenge addressed: "commit > 0 is not evidence of non-vacuity — at base rate
 b even a random score gets certified at commit ~ alpha/b minus a finite-sample

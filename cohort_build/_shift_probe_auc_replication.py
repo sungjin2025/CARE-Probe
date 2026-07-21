@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """_shift_probe_auc_replication.py — probe discrimination measured UNDER temporal
-shift (internal-review item R1-M2; main-text Table 4 / Online Resource 21).
+shift (main-text Table 4 / Online Resource 21).
 
 Uses the same split and probe construction as E-shift (run_c3 / e0_crc.py
 --split temporal --shift_test_group "2017 - 2019"): the probe is trained on

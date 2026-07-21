@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """_esi3_threegroup_mondrian.py — three-group Mondrian CRC isolating ESI-3
-(internal-review item R3-W4; Online Resource 19).
+(Online Resource 19).
 
 Motivation: the two-group Mondrian design (high = ESI 1-2, alpha=0.05 / low =
 ESI 3-5, alpha=0.15) merges ESI 3 — the largest-volume, diagnostically hardest
