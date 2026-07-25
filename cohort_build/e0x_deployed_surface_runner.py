@@ -22,10 +22,11 @@ Evidence modes (--evidence_mode):
     concat : per-source "### Source P/W/G" blocks, top-3/source
              (= e0_probe_runner protocol that produced the MAIN probe npz)
     fused  : min-max + k-means upper-cluster global top-4
-             (= imaging_runner_v2 msrc fusion, manuscript §4.1 description)
+             (= imaging_runner_v2 msrc fusion; alternative mode NOT used by
+             MAIN — the manuscript describes the per-source concat protocol)
 Pass --main_npz to verify subsample alignment (stay_id sets) and report
-greedy-prediction agreement with the MAIN pred_bits — this settles which
-evidence mode reproduces the MAIN generation (resolves open item #1, §4.2).
+greedy-prediction agreement with the MAIN pred_bits — verified: concat
+reproduces the MAIN generation (100% greedy-prediction agreement).
 
 Generation calls per stay: greedy 1 + self-consistency 1 batched (N seqs)
 + per-source 3  →  9 sequences / stay; n=2000 → 18,000 sequences per backbone.
@@ -101,7 +102,7 @@ def concat_evidence(hits_by_src) -> str:
 
 
 def fused_evidence(hits_by_src) -> str:
-    """imaging_runner_v2 msrc fusion (manuscript §4.1): min-max per source,
+    """imaging_runner_v2 msrc fusion (alternative mode, not used by MAIN): min-max per source,
     k-means K=2 upper cluster, weighted, global top-4. Cosine rescoring is a
     per-collection constant scale → monotone in raw IP, so min-max is unaffected."""
     per_source = {SRC_TO_MSRC[sk]: hits_by_src[sk] for sk in SRC_ORDER}
@@ -169,7 +170,7 @@ def parse_args():
                     help="subsample seed — must match the MAIN run (42)")
     ap.add_argument("--evidence_mode", default="concat", choices=["concat", "fused"],
                     help="concat = e0_probe_runner protocol (MAIN npz); "
-                         "fused = imaging_runner_v2 msrc (manuscript §4.1)")
+                         "fused = imaging_runner_v2 msrc (alternative; MAIN uses concat)")
     ap.add_argument("--main_npz", default="",
                     help="MAIN probe npz for stay-id alignment + prediction-agreement check")
     ap.add_argument("--n_samples", type=int, default=5)
