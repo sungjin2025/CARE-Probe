@@ -2,8 +2,8 @@
 
 Code and cohort-build scripts for:
 
-> **CARE-Probe: Risk-Controlled Physician Deferral from Internal States in Open-Weight Medical LLMs**
-> Sungjin Jang, Beakcheol Jang. Graduate School of Information, Yonsei University.
+> **CARE-Probe: A conformal risk-control framework for physician deferral with bounded committed error in open-weight medical LLMs**
+> Sungjin Jang, Woosung Jung, Beakcheol Jang. Graduate School of Information, Yonsei University; Department of Emergency Medicine, Gupo Sungshim Hospital.
 > *Artificial Intelligence in Medicine* (under review, 2026).
 
 CARE-Probe is a deployable safety mechanism for governing LLM-based clinical decision
@@ -164,9 +164,9 @@ cohort should recover them.
 
 ```bibtex
 @article{jang2026careprobe,
-  title  = {CARE-Probe: Risk-Controlled Physician Deferral from Internal States
-            in Open-Weight Medical LLMs},
-  author = {Jang, Sungjin and Jang, Beakcheol},
+  title  = {CARE-Probe: A conformal risk-control framework for physician deferral
+            with bounded committed error in open-weight medical LLMs},
+  author = {Jang, Sungjin and Jung, Woosung and Jang, Beakcheol},
   journal= {Artificial Intelligence in Medicine},
   year   = {2026},
   note   = {Under review}
