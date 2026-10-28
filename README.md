@@ -2,7 +2,7 @@
 
 Code and cohort-build scripts for:
 
-> **CARE-Probe: Risk-controlled allocation of physician review for open-weight clinical LLM recommendations**
+> **CARE-Probe: Risk-Controlled Deferral from Internal Representations of Clinical LLMs — A Case Study on Emergency Imaging**
 > Sungjin Jang, Woosung Jung, Beakcheol Jang. Graduate School of Information, Yonsei University; Department of Emergency Medicine, Gupo Sungshim Hospital.
 > Manuscript under review (2026).
 
@@ -59,8 +59,29 @@ cohort_build/          all runnable code
   paths.py             environment-dependent paths (dev / server)
   requirements_server.txt   Python dependencies
   SERVER_SETUP.md      GPU + Milvus setup notes
+deleak/                de-leaked configuration: prompt-field audit + regeneration
+  deleak_probe_runner.py       hidden-state regeneration with the four post-presentation
+                               fields (icd10_primary, assessment, plan, diagnosis) removed
+  deleak_surface_runner.py / deleak_b4_runner.py   surface-signal / sampling re-runs, de-leaked
+  confound_analysis_deleak.py  field-level leakage screen (standalone predictiveness)
+  run_deleak_extra_gpu.sh / run_deleak_extra_downstream.sh   drivers (GPU / CPU downstream)
+signal_utility/        identical-budget cross-signal comparison (input / probe / combined /
+                       P(True) / semantic entropy / random)
+  work_b_signal_crc.py             CRC wrapper over every signal (PROBE_TAG=-deleak;
+                                   also dumps per-split rows for paired coverage CIs)
+  careprobe_incremental_value.py   out-of-fold probe / input / combined score construction
+  _persplit_ci.py                  paired per-split Delta-commit bootstrap CIs
+verification/          CPU-only validity checks of the certification machinery
+  synthetic_coverage_check.py  end-to-end synthetic coverage audit (known ground-truth risk)
+  power_check.py               Monte-Carlo power of the Hoeffding-Bentkus test
 results/               aggregate result tables (no patient data; map to Online Resources)
 ```
+
+All reported results use the **de-leaked configuration**: hidden states are regenerated on
+all eight backbones with the four post-presentation prompt fields removed
+(`deleak/deleak_probe_runner.py`); the signal-utility comparison and its paired per-split
+coverage intervals come from `signal_utility/`, and `verification/` reproduces the
+guarantee's synthetic coverage and power analyses without data or GPUs.
 
 ---
 
@@ -164,8 +185,8 @@ cohort should recover them.
 
 ```bibtex
 @article{jang2026careprobe,
-  title  = {CARE-Probe: Risk-controlled allocation of physician review
-            for open-weight clinical LLM recommendations},
+  title  = {CARE-Probe: Risk-Controlled Deferral from Internal Representations
+            of Clinical LLMs---A Case Study on Emergency Imaging},
   author = {Jang, Sungjin and Jung, Woosung and Jang, Beakcheol},
   year   = {2026},
   note   = {Manuscript under review}
