@@ -2,7 +2,7 @@
 
 Code and cohort-build scripts for:
 
-> **CARE-Probe: Risk-Controlled Deferral from Internal Representations of Clinical LLMs — A Case Study on Emergency Imaging**
+> **CARE-Probe: A Risk-Controlled Audit of Internal-Representation Deferral Signals in Clinical LLMs — A Case Study on Emergency Imaging**
 > Sungjin Jang, Woosung Jung, Beakcheol Jang. Graduate School of Information, Yonsei University; Department of Emergency Medicine, Gupo Sungshim Hospital.
 > Manuscript under review (2026).
 
@@ -185,8 +185,8 @@ cohort should recover them.
 
 ```bibtex
 @article{jang2026careprobe,
-  title  = {CARE-Probe: Risk-Controlled Deferral from Internal Representations
-            of Clinical LLMs---A Case Study on Emergency Imaging},
+  title  = {CARE-Probe: A Risk-Controlled Audit of Internal-Representation Deferral Signals
+            in Clinical LLMs---A Case Study on Emergency Imaging},
   author = {Jang, Sungjin and Jung, Woosung and Jang, Beakcheol},
   year   = {2026},
   note   = {Manuscript under review}
